@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Trigonometric PRO - A/L Toolkit</title>
+<link rel="icon" type="image/x-icon" href="trigoico.ico">
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <style>
+        /* --- CORE STYLES & COLOR PALETTE --- */
+        :root {
+            --font-family: 'Segoe UI', 'Iskoola Pota', system-ui, sans-serif;
+            
+            /* Dark Theme Colors */
+            --bg-gradient-dark: linear-gradient(145deg, #1d2b40, #101622);
+            --container-bg-dark: rgba(20, 30, 60, 0.5);
+            --control-card-bg-dark: rgba(0, 0, 0, 0.2);
+            --primary-color-dark: #00d9ff;
+            --secondary-color-dark: #7aff8a;
+            --text-color-dark: #cad3f5;
+            --title-color-dark: #ffffff;
+            --input-bg-dark: rgba(0, 0, 0, 0.4);
+            --input-focus-glow-dark: rgba(0, 217, 255, 0.5);
+            --result-bg-dark: #0a111f;
+            --shadow-color-dark: rgba(0,0,0,0.5);
+            --border-color-dark: rgba(0, 217, 255, 0.25);
+            --loader-bg-dark: #0F1626;
+            --wave1-color-dark: #00d9ff;
+            --wave2-color-dark: #ff55a3;
+            --waveSum-color-dark: #ffd900;
+            --error-color-dark: #ff6b6b;
+
+            /* Light Theme Colors */
+            --bg-gradient-light: linear-gradient(145deg, #eef5ff, #d8e4f5);
+            --container-bg-light: rgba(255, 255, 255, 0.8);
+            --control-card-bg-light: rgba(255, 255, 255, 0.7);
+            --primary-color-light: #006ee6;
+            --secondary-color-light: #f57c00;
+            --text-color-light: #2c3e50;
+            --title-color-light: #001a33;
+            --input-bg-light: #ffffff;
+            --input-focus-glow-light: rgba(0, 110, 230, 0.4);
+            --result-bg-light: #f8faff;
+            --shadow-color-light: rgba(0,0,0,0.1);
+            --border-color-light: rgba(0, 110, 230, 0.3);
+            --loader-bg-light: #eef5ff;
+            --wave1-color-light: #006ee6;
+            --wave2-color-light: #d81b60;
+            --waveSum-color-light: #f57c00;
+            --error-color-light: #d32f2f;
+        }
+
+        * { box-sizing: border-box; }
+
+        @keyframes gradient-animation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        html, body { height: 100%; margin: 0; overflow: hidden; } /* Ensure overflow is initially hidden for loader */
+        body.loaded { overflow-y: auto; overflow-x: hidden; } /* Allow scrolling once loaded, prevent horizontal scroll */
+        body { 
+            font-family: var(--font-family); 
+            background-image: var(--bg-gradient-dark); 
+            background-size: 200% 200%; 
+            animation: gradient-animation 18s ease infinite; 
+            color: var(--text-color-dark); 
+            padding: clamp(10px, 2vw, 20px); /* Responsive padding */
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            transition: color 0.4s ease, background-image 0.4s ease; 
+        }
+        body.light-mode { background-image: var(--bg-gradient-light); color: var(--text-color-light); }
+        
+        /* --- Loader Styles --- */
+        #loading-overlay { position: fixed; inset: 0; z-index: 9999; background-color: var(--loader-bg-dark); display: flex; justify-content: center; align-items: center; flex-direction: column; transition: opacity 1s ease, visibility 1s ease; opacity: 1; visibility: visible; }
+        body.light-mode #loading-overlay { background-color: var(--loader-bg-light); }
+        #loading-overlay.hidden { opacity: 0; visibility: hidden; }
+        #loader-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .loader-text { font-size: clamp(1.2rem, 3vw, 1.8rem); z-index: 1; text-shadow: 0 0 12px var(--primary-color-dark); animation: pulse 2s infinite ease-in-out; padding: 15px 30px; background: rgba(29, 43, 83, 0.5); border-radius: 10px; backdrop-filter: blur(8px); color: var(--text-color-dark); }
+        body.light-mode .loader-text { text-shadow: 0 0 12px var(--primary-color-light); background: rgba(255, 255, 255, 0.4); color: var(--text-color-light); }
+        .progress-container { width: clamp(200px, 60vw, 300px); height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 20px; box-shadow: 0 0 10px var(--primary-color-dark); z-index: 1; }
+        body.light-mode .progress-container { background: rgba(0,0,0,0.1); box-shadow: 0 0 10px var(--primary-color-light); }
+        .progress-bar { width: 0%; height: 100%; background: var(--primary-color-dark); transition: width 0.3s ease; box-shadow: 0 0 8px var(--primary-color-dark); }
+        body.light-mode .progress-bar { background: var(--primary-color-light); box-shadow: 0 0 8px var(--primary-color-light); }
+        .status-text { font-size: clamp(0.8rem, 2vw, 1rem); margin-top: 10px; opacity: 0.8; z-index: 1; color: var(--text-color-dark); }
+        body.light-mode .status-text { color: var(--text-color-light); }
+        @keyframes pulse { 0%, 100% { opacity: 0.7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+
+        /* --- App Container & Header --- */
+        .app-container { 
+            opacity: 0; 
+            transition: opacity 0.8s ease 0.5s; 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+            background: var(--container-bg-dark); 
+            backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px); 
+            padding: clamp(15px, 4vw, 30px); 
+            border-radius: 24px; 
+            max-width: 1100px; 
+            width: 100%; 
+            box-shadow: 0 12px 40px 0 var(--shadow-color-dark); 
+            border: 1px solid var(--border-color-dark); 
+            min-height: 0; /* Important for flex children in column layout */
+        }
+        body.loaded .app-container { opacity: 1; }
+        body.light-mode .app-container { background: var(--container-bg-light); box-shadow: 0 8px 32px 0 var(--shadow-color-light); border-color: var(--border-color-light); }
+        
+        .app-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color-dark); flex-wrap: wrap; gap: 10px; }
+        body.light-mode .app-header { border-bottom-color: var(--border-color-light); }
+        .app-header h1 { color: var(--title-color-dark); margin: 0; font-size: clamp(1.6rem, 5vw, 2.3rem); } /* More responsive font size */
+        body.light-mode .app-header h1 { color: var(--title-color-light); }
+        .app-header .controls { display: flex; align-items: center; gap: clamp(10px, 2vw, 15px); }
+        
+        #theme-toggle { 
+            background:none; border:none; cursor:pointer; padding:8px; width:40px; height:40px; 
+            display:flex; justify-content:center; align-items:center; border-radius:50%;
+            transition: background-color 0.3s ease;
+        }
+        #theme-toggle:hover { background-color: rgba(255,255,255,0.1); }
+        body.light-mode #theme-toggle:hover { background-color: rgba(0,0,0,0.05); }
+
+        .theme-icon-wrapper { position:relative; width:28px; height:28px; transform:rotate(40deg); transition:transform .6s cubic-bezier(.68,-.55,.27,1.55); }
+        .theme-icon { position:absolute; inset:0; width:100%; height:100%; transition: opacity .3s ease, transform .6s cubic-bezier(.68,-.55,.27,1.55), color 0.4s ease; stroke:currentColor; }
+        .theme-icon.sun { color:#f39c12; }
+        .theme-icon.moon { color:#f1c40f; opacity:0; transform:scale(.6); }
+        
+        body.light-mode .theme-icon-wrapper { transform: rotate(0deg); }
+        body.light-mode .theme-icon.sun { opacity:0; transform:scale(.6); }
+        body.light-mode .theme-icon.moon { opacity:1; transform:scale(1); }
+
+        #lang-toggle { 
+            padding: 10px 14px; /* Adjust padding for touch */
+            font-size: clamp(0.9rem, 2.5vw, 1rem); 
+        }
+
+        .app-footer { 
+            text-align: center; 
+            margin-top: 20px; 
+            font-size: clamp(0.8rem, 2vw, 0.9rem); /* Responsive font size */
+            color: rgba(202, 211, 245, 0.6); 
+            width: 100%; 
+            max-width: 1100px; 
+            padding-top: 10px;
+        }
+        body.light-mode .app-footer { color: rgba(44, 62, 80, 0.7); }
+        
+        /* --- Tab Content & Navigation --- */
+        main.tab-content { flex-grow: 1; overflow-y: auto; padding-right: 10px; margin-right: -10px; min-height: 0; }
+        .tab-pane { display: none; flex-direction: column; height: 100%; }
+        .tab-pane.active { display: flex; animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        p { margin: 0 0 clamp(15px, 3vw, 20px) 0; font-size: clamp(1rem, 2.5vw, 1.1rem); line-height: 1.6; }
+
+        .tab-nav { display: flex; flex-wrap: wrap; gap: clamp(8px, 2vw, 10px); margin-bottom: 25px; }
+        .tab-nav button { 
+            flex-grow: 1; 
+            padding: clamp(10px, 3vw, 12px) clamp(8px, 2vw, 10px); /* Responsive padding */
+            border-radius: 10px; 
+            border: 1px solid transparent; 
+            background-color: rgba(0,0,0,0.2); 
+            color: var(--text-color-dark); 
+            font-size: clamp(0.9rem, 2.5vw, 1rem); 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            min-width: fit-content; /* Prevent buttons from becoming too small */
+        }
+        body.light-mode .tab-nav button { background-color: rgba(255,255,255,0.5); color: var(--text-color-light); }
+        .tab-nav button:hover:not(.active) { background-color: rgba(0,0,0,0.3); }
+        .tab-nav button:active { /* Added for touch feedback */
+            transform: translateY(0px) scale(0.98);
+            background-color: rgba(0,0,0,0.4);
+            box-shadow: none;
+        }
+        body.light-mode .tab-nav button:hover:not(.active) { background-color: rgba(255,255,255,0.8); }
+        body.light-mode .tab-nav button:active {
+            background-color: rgba(255,255,255,0.6);
+        }
+        .tab-nav button.active { 
+            background-color: var(--primary-color-dark); 
+            color: #000; 
+            transform: translateY(-3px); 
+            box-shadow: 0 4px 20px -5px var(--primary-color-dark); 
+            border-color: var(--primary-color-dark); 
+        }
+        body.light-mode .tab-nav button.active { background-color: var(--primary-color-light); color: #fff; box-shadow: 0 4px 15px rgba(0, 86, 179, 0.3); border-color: var(--primary-color-light); }
+        
+        /* --- Form Elements --- */
+        .form-group { margin-bottom: clamp(10px, 2.5vw, 15px); }
+        .form-group label { display: block; margin-bottom: 8px; font-size: clamp(0.95rem, 2.5vw, 1rem); font-weight: 500; }
+        input[type="text"], input[type="number"], select {
+            width: 100%; 
+            padding: clamp(12px, 3vw, 14px); /* Responsive padding */
+            border-radius: 8px; 
+            border: 1px solid var(--border-color-dark);
+            background-color: var(--input-bg-dark); 
+            color: var(--text-color-dark); 
+            font-size: clamp(1rem, 2.5vw, 1.1rem); /* Responsive font size */
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        body.light-mode input[type="text"], body.light-mode input[type="number"], body.light-mode select {
+            border-color: var(--border-color-light); background-color: var(--input-bg-light); color: var(--text-color-light);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        input:focus, select:focus {
+            outline: none; border-color: var(--primary-color-dark);
+            box-shadow: 0 0 0 3px var(--input-focus-glow-dark), inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        body.light-mode input:focus, body.light-mode select:focus {
+            border-color: var(--primary-color-light);
+            box-shadow: 0 0 0 3px var(--input-focus-glow-light), inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        select { 
+            appearance: none; -webkit-appearance: none; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23cad3f5' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E"); 
+            background-repeat: no-repeat; 
+            background-position: right 1rem center; /* Adjusted for better spacing */
+            background-size: 16px; /* Ensure SVG scales properly */
+        }
+        body.light-mode select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%232c3e50' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");}
+
+        input[type="range"] { 
+            -webkit-appearance: none; width: 100%; height: 8px; 
+            background: rgba(0,0,0,0.3); border-radius: 4px; outline: none; 
+            transition: background 0.3s; 
+            margin-top: 5px; /* Added for better spacing */
+        }
+        body.light-mode input[type="range"] { background: rgba(0,0,0,0.1); }
+        input[type="range"]::-webkit-slider-thumb { 
+            -webkit-appearance: none; appearance: none; 
+            width: 24px; height: 24px; /* Larger thumb for touch */
+            border-radius: 50%; background: var(--primary-color-dark); cursor: grab; 
+            transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; 
+            box-shadow: 0 0 10px 0 var(--input-focus-glow-dark); 
+            margin-top: -8px; /* Center thumb vertically */
+        }
+        input[type="range"]::-webkit-slider-thumb:active { /* Touch feedback */
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+        body.light-mode input[type="range"]::-webkit-slider-thumb { background: var(--primary-color-light); box-shadow: 0 0 10px 0 var(--input-focus-glow-light); }
+        input[type="range"]::-moz-range-thumb { 
+            width: 24px; height: 24px; /* Larger thumb for touch */
+            border-radius: 50%; background: var(--primary-color-dark); cursor: grab; 
+            border: none; box-shadow: 0 0 10px 0 var(--input-focus-glow-dark); 
+        }
+
+        /* --- Buttons --- */
+        .button-base { 
+            display: inline-flex; justify-content: center; align-items: center; gap: 8px; 
+            padding: clamp(14px, 4vw, 16px); /* Responsive padding */
+            border: none; border-radius: 10px; 
+            font-size: clamp(1rem, 2.8vw, 1.1rem); /* Responsive font size */
+            font-weight: bold; cursor: pointer; 
+            transition: all 0.3s ease; 
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+        .main-button { 
+            width: 100%; margin-top: 25px; 
+            background-image: linear-gradient(to right, var(--primary-color-dark) 0%, var(--secondary-color-dark) 100%); 
+            color: #001a33; box-shadow: 0 4px 15px rgba(0, 217, 255, 0.2); 
+        }
+        body.light-mode .main-button { background-image: linear-gradient(to right, var(--primary-color-light) 0%, var(--secondary-color-light) 100%); color: #fff; box-shadow: 0 4px 15px rgba(0, 110, 230, 0.2); }
+        .main-button:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 6px 20px rgba(0, 217, 255, 0.4); }
+        .main-button:active:not(:disabled) { /* Touch feedback */
+            transform: translateY(0px) scale(0.98);
+            box-shadow: 0 2px 10px rgba(0, 217, 255, 0.3);
+        }
+        body.light-mode .main-button:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(0, 110, 230, 0.3); }
+        body.light-mode .main-button:active:not(:disabled) {
+            box-shadow: 0 2px 10px rgba(0, 110, 230, 0.2);
+        }
+
+        .secondary-button { flex: 1; margin-top: 0; background-color: rgba(255,255,255,0.1); color: var(--text-color-dark); }
+        .secondary-button:hover:not(:disabled) { background-color: rgba(255,255,255,0.2); }
+        .secondary-button:active:not(:disabled) { background-color: rgba(255,255,255,0.3); transform: scale(0.98); }
+        body.light-mode .secondary-button { background-color: rgba(0,0,0,0.05); color: var(--text-color-light); }
+        body.light-mode .secondary-button:hover:not(:disabled) { background-color: rgba(0,0,0,0.1); }
+        body.light-mode .secondary-button:active:not(:disabled) { background-color: rgba(0,0,0,0.15); }
+
+        .tertiary-button { flex: 1; margin-top: 0; background-color: transparent; border: 1px solid var(--border-color-dark); color: var(--text-color-dark); }
+        body.light-mode .tertiary-button { border-color: var(--border-color-light); }
+        .tertiary-button:hover:not(:disabled) { background-color: rgba(255,255,255,0.1); }
+        .tertiary-button:active:not(:disabled) { background-color: rgba(255,255,255,0.2); transform: scale(0.98); }
+        body.light-mode .tertiary-button:hover:not(:disabled) { background-color: rgba(0,0,0,0.05); }
+        body.light-mode .tertiary-button:active:not(:disabled) { background-color: rgba(0,0,0,0.1); }
+
+        /* --- Result & Method Panels --- */
+        .result-container { margin-top: clamp(20px, 4vw, 25px); display: none; }
+        .result { 
+            padding: clamp(15px, 4vw, 20px); 
+            background: var(--result-bg-dark); 
+            border-radius: 8px; font-family: 'Courier New', monospace; 
+            white-space: pre-wrap; word-wrap: break-word; 
+            border-left: 5px solid var(--primary-color-dark); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            font-size: clamp(0.9rem, 2.2vw, 1rem); /* Responsive font size */
+        }
+        body.light-mode .result { background: var(--result-bg-light); border-left-color: var(--primary-color-light); }
+        .result-actions { display: flex; flex-wrap: wrap; gap: clamp(8px, 2vw, 10px); margin-top: clamp(10px, 2.5vw, 15px); }
+        .action-button { 
+            flex-grow: 1; 
+            padding: clamp(8px, 2vw, 10px); 
+            font-size: clamp(0.85rem, 2vw, 0.9rem); 
+            background: rgba(255,255,255,0.1); 
+            border: 1px solid var(--border-color-dark); 
+            color: var(--text-color-dark); 
+            border-radius: 6px; cursor: pointer; 
+            transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s; 
+        }
+        .action-button:hover { background: var(--primary-color-dark); color: #000; border-color: var(--primary-color-dark); }
+        .action-button:active { transform: scale(0.98); background: rgba(0, 217, 255, 0.6); }
+        body.light-mode .action-button { background: rgba(0,0,0,0.05); border-color: var(--border-color-light); color: var(--text-color-light); }
+        body.light-mode .action-button:hover { background: var(--primary-color-light); color: #fff; border-color: var(--primary-color-light); }
+        body.light-mode .action-button:active { background: rgba(0, 110, 230, 0.8); }
+
+        .method-panel { max-height: 0; overflow: hidden; transition: all 0.5s ease-out; background: var(--control-card-bg-dark); border-radius: 8px; padding: 0 15px; margin-top: 0; font-family: var(--font-family); }
+        .method-panel.show { max-height: 500px; padding: 15px; margin-top: 15px; }
+
+        .control-card { background: var(--control-card-bg-dark); border: 1px solid var(--border-color-dark); padding: 20px; border-radius: 16px; margin-bottom: clamp(15px, 3vw, 20px); }
+        body.light-mode .control-card { background: var(--control-card-bg-light); border-color: var(--border-color-light); }
+        .control-card h3 { margin: -20px -20px 20px -20px; padding: 15px 20px; border-bottom: 1px solid var(--border-color-dark); font-size: clamp(1.1rem, 3vw, 1.2rem); }
+        body.light-mode .control-card h3 { border-bottom-color: var(--border-color-light); }
+        
+        /* --- Triangle Solver Specifics --- */
+        .triangle-solver-layout { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Adjusted minmax for smaller screens */
+            gap: clamp(15px, 4vw, 25px); 
+            align-items: center; 
+        }
+        .input-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Adjusted minmax */
+            gap: clamp(10px, 2.5vw, 15px); 
+        }
+        .triangle-visualizer { 
+            width: 100%; min-height: 280px; 
+            display: flex; justify-content: center; align-items: center; 
+            background: var(--control-card-bg-dark); border-radius: 12px; 
+            padding: 10px; border: 1px solid var(--border-color-dark); 
+        }
+        body.light-mode .triangle-visualizer { background: var(--control-card-bg-light); border-color: var(--border-color-light); }
+        #triangle-svg { width: 100%; height: auto; max-height: 300px; }
+        #triangle-svg text { font-size: clamp(12px, 3vw, 14px); font-family: sans-serif; transition: fill 0.4s ease; } /* Responsive font size */
+        #triangle-svg .side-label { fill: var(--primary-color-dark); font-weight: bold; }
+        #triangle-svg .angle-label { fill: var(--secondary-color-dark); font-weight: bold; }
+        body.light-mode #triangle-svg .side-label { fill: var(--primary-color-light); }
+        body.light-mode #triangle-svg .angle-label { fill: var(--secondary-color-light); }
+        
+        /* --- Grapher Specifics --- */
+        .grapher-controls { display: flex; flex-wrap: wrap; gap: clamp(8px, 2vw, 10px); margin-top: clamp(15px, 3vw, 20px); }
+        .canvas-container { margin-top: clamp(15px, 3vw, 20px); position: relative; height: 400px; }
+
+        /* --- Wave Simulator Specifics --- */
+        .wave-simulator-layout { 
+            display: grid; 
+            grid-template-columns: 350px 1fr; /* Default for larger screens */
+            gap: clamp(15px, 4vw, 25px); 
+            flex-grow: 1; 
+        }
+        .wave-controls-column { display: flex; flex-direction: column; gap: clamp(15px, 3vw, 20px); }
+        .wave-graph-column { display: flex; flex-direction: column; min-height: 0; }
+        .wave-graph-column .canvas-container { margin-top: 0; flex-grow: 1; height: auto; min-height: 300px; }
+        .wave-main-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: clamp(10px, 2.5vw, 15px); }
+        .wave-main-controls .toggle-group { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: clamp(0.95rem, 2.5vw, 1rem); }
+        .wave-main-controls .toggle-group input { 
+            width: clamp(18px, 4vw, 20px); height: clamp(18px, 4vw, 20px); /* Larger checkbox */
+        }
+        .wave-control-panel { padding: clamp(15px, 3vw, 20px); border: 1px solid; border-radius: 12px; transition: border-color 0.4s; }
+        .wave-control-panel h3 { margin: 0 0 clamp(10px, 2.5vw, 15px); padding-bottom: 10px; border-bottom: 1px solid; font-size: clamp(1.1rem, 3vw, 1.2rem); transition: color 0.4s, border-color 0.4s; }
+        .wave-control-panel .form-group { margin-bottom: 0; }
+        .wave-control-panel label { display: flex; justify-content: space-between; font-size: clamp(0.9rem, 2.2vw, 0.95rem); margin-bottom: 8px; flex-wrap: wrap; } /* Allow label to wrap */
+        
+        #wave-1-controls { border-color: var(--wave1-color-dark); } #wave-1-controls h3 { color: var(--wave1-color-dark); border-color: var(--wave1-color-dark); }
+        #wave-2-controls { border-color: var(--wave2-color-dark); } #wave-2-controls h3 { color: var(--wave2-color-dark); border-color: var(--wave2-color-dark); }
+        body.light-mode #wave-1-controls { border-color: var(--wave1-color-light); } body.light-mode #wave-1-controls h3 { color: var(--wave1-color-light); border-color: var(--wave1-color-light); }
+        body.light-mode #wave-2-controls { border-color: var(--wave2-color-light); } body.light-mode #wave-2-controls h3 { color: var(--wave2-color-light); border-color: var(--wave2-color-light); }
+        
+        #wave-2-controls-container { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out, opacity 0.5s ease-out, margin-top 0.5s ease-out; opacity: 0; }
+        #wave-2-controls-container.visible { max-height: 500px; opacity: 1; margin-top: clamp(15px, 3vw, 20px); }
+
+        /* Wave slider thumb colors - already dynamic, just ensure size is responsive */
+        #slider-amp-1::-webkit-slider-thumb, #slider-freq-1::-webkit-slider-thumb, #slider-phase-1::-webkit-slider-thumb, #slider-vert-1::-webkit-slider-thumb { background: var(--wave1-color-dark); box-shadow: 0 0 10px 0 var(--wave1-color-dark); width: 24px; height: 24px; }
+        #slider-amp-2::-webkit-slider-thumb, #slider-freq-2::-webkit-slider-thumb, #slider-phase-2::-webkit-slider-thumb, #slider-vert-2::-webkit-slider-thumb { background: var(--wave2-color-dark); box-shadow: 0 0 10px 0 var(--wave2-color-dark); width: 24px; height: 24px; }
+        body.light-mode #slider-amp-1::-webkit-slider-thumb, body.light-mode #slider-freq-1::-webkit-slider-thumb, body.light-mode #slider-phase-1::-webkit-slider-thumb, body.light-mode #slider-vert-1::-webkit-slider-thumb { background: var(--wave1-color-light); box-shadow: 0 0 10px 0 var(--wave1-color-light); }
+        body.light-mode #slider-amp-2::-webkit-slider-thumb, body.light-mode #slider-freq-2::-webkit-slider-thumb, body.light-mode #slider-phase-2::-webkit-slider-thumb, body.light-mode #slider-vert-2::-webkit-slider-thumb { background: var(--wave2-color-light); box-shadow: 0 0 10px 0 var(--wave2-color-light); }
+
+        .dynamic-formula { 
+            padding: clamp(15px, 3vw, 20px); 
+            background: var(--result-bg-dark); 
+            border-radius: 12px; font-family: 'Courier New', monospace; 
+            font-size: clamp(0.9rem, 2.5vw, 1.25rem); /* Responsive font size */
+            font-weight: bold; text-align: center; 
+            margin-bottom: clamp(15px, 3vw, 20px); min-height: 60px; 
+            display: flex; align-items: center; justify-content: center; flex-wrap: wrap; 
+        }
+        .dynamic-formula .p1 { color: var(--wave1-color-dark); } .dynamic-formula .p2 { color: var(--wave2-color-dark); }
+        body.light-mode .dynamic-formula .p1 { color: var(--wave1-color-light); } body.light-mode .dynamic-formula .p2 { color: var(--wave2-color-light); }
+        
+        /* --- Media Queries for Mobile Responsiveness --- */
+        @media (max-width: 900px) { 
+            .wave-simulator-layout { grid-template-columns: 1fr; } /* Stack for smaller screens */
+            .wave-controls-column { order: 2; } /* Put controls below graph for better flow */
+            .wave-graph-column { order: 1; margin-bottom: 20px; }
+        }
+
+        @media (max-width: 600px) {
+            .app-header { flex-direction: column; align-items: flex-start; }
+            .app-header h1 { margin-bottom: 10px; font-size: 1.8rem; }
+            .app-header .controls { width: 100%; justify-content: space-between; }
+            .tab-nav button { font-size: 0.85rem; padding: 10px 5px; } /* Smaller tabs on very small screens */
+            .triangle-solver-layout { grid-template-columns: 1fr; }
+            .input-grid { grid-template-columns: 1fr; } /* Stack triangle inputs vertically */
+            .grapher-controls { flex-direction: column; } /* Stack graph buttons */
+            .main-button, .secondary-button, .tertiary-button { width: 100%; margin-top: 10px; }
+            .result-actions { flex-direction: column; } /* Stack action buttons */
+            .action-button { width: 100%; }
+
+            .loader-text { font-size: 1.1rem; padding: 10px 20px; }
+            .progress-container { width: 80vw; }
+            .status-text { font-size: 0.75rem; }
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            /* Styles that only apply on devices with accurate pointers (e.g. desktop) */
+            .button-base:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); }
+            .secondary-button:hover:not(:disabled) { background-color: rgba(255,255,255,0.2); }
+            .tertiary-button:hover:not(:disabled) { background-color: rgba(255,255,255,0.1); }
+            .action-button:hover { background: var(--primary-color-dark); color: #000; border-color: var(--primary-color-dark); }
+            .tab-nav button:hover:not(.active) { background-color: rgba(0,0,0,0.3); }
+            body.light-mode .secondary-button:hover:not(:disabled) { background-color: rgba(0,0,0,0.1); }
+            body.light-mode .tertiary-button:hover:not(:disabled) { background-color: rgba(0,0,0,0.05); }
+            body.light-mode .action-button:hover { background: var(--primary-color-light); color: #fff; border-color: var(--primary-color-light); }
+            body.light-mode .tab-nav button:hover:not(.active) { background-color: rgba(255,255,255,0.8); }
+        }
+
+        /* Basic touch feedback for all buttons if hover is not available */
+        @media (hover: none) and (pointer: coarse) {
+            .button-base:active:not(:disabled),
+            .tab-nav button:active:not(.active),
+            .action-button:active:not(:disabled) {
+                transform: scale(0.95); /* A more pronounced tap effect */
+                opacity: 0.8;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay">
+        <canvas id="loader-canvas"></canvas>
+        <div class="loader-text" data-key="loaderTitle"></div>
+        <div class="progress-container"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="status-text" id="status-text"></div>
+    </div>
+    
+    <div class="app-container">
+        <header class="app-header">
+            <h1 data-key="mainTitle"></h1>
+            <div class="controls">
+                <button id="theme-toggle" aria-label="Toggle Theme">
+                    <div class="theme-icon-wrapper">
+                        <svg class="theme-icon sun" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <svg class="theme-icon moon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </div>
+                </button>
+                <select id="lang-toggle" aria-label="Change Language"><option value="si">සිංහල</option><option value="en">English</option></select>
+            </div>
+        </header>
+
+        <nav class="tab-nav">
+            <button data-tab="calculator" id="tab-btn-calculator" data-key="tabCalculator"></button>
+            <button data-tab="triangle" id="tab-btn-triangle" data-key="tabTriangle"></button>
+            <button data-tab="grapher" id="tab-btn-grapher" data-key="tabGrapher"></button>
+            <button data-tab="wave" id="tab-btn-wave" data-key="tabWave"></button>
+            <button data-tab="verifier" id="tab-btn-verifier" data-key="tabVerifier"></button>
+        </nav>
+
+        <main class="tab-content">
+            <div class="tab-pane" id="tab-calculator">
+                <p data-key="calcDesc"></p>
+                <div class="form-group">
+                    <input type="text" id="master-input" placeholder="sin(pi/6) + cos(60 deg)^2">
+                </div>
+                <button class="button-base main-button" id="btn-solve-master" data-key="solveBtn"></button>
+                <div class="result-container" id="master-result-container">
+                    <div class="result" id="master-output"></div>
+                    <div class="result-actions">
+                        <button class="action-button" data-method-toggle="master-method" data-key="showMethodBtn"></button>
+                        <button class="action-button" data-copy-target="master-output" data-key="copyBtn"></button>
+                        <button class="action-button" data-download-target="master-output" data-download-filename="calculation.txt" data-key="downloadBtn"></button>
+                    </div>
+                    <div class="method-panel" id="master-method"></div>
+                </div>
+            </div>
+            
+            <div class="tab-pane" id="tab-triangle">
+                <p data-key="triangleDesc"></p>
+                <div class="triangle-solver-layout">
+                    <div class="control-card">
+                        <h3>Input Values</h3>
+                        <div class="input-grid">
+                            <div class="form-group"><label data-key="sideA"></label><input type="number" id="side_a"></div>
+                            <div class="form-group"><label data-key="sideB"></label><input type="number" id="side_b"></div>
+                            <div class="form-group"><label data-key="sideC"></label><input type="number" id="side_c"></div>
+                            <div class="form-group"><label data-key="angleA"></label><input type="number" id="angle_A"></div>
+                            <div class="form-group"><label data-key="angleB"></label><input type="number" id="angle_B"></div>
+                            <div class="form-group"><label data-key="angleC"></label><input type="number" id="angle_C"></div>
+                        </div>
+                    </div>
+                    <div class="triangle-visualizer"><svg id="triangle-svg" viewBox="0 0 300 250" preserveAspectRatio="xMidYMid meet"></svg></div>
+                </div>
+                <button class="button-base main-button" id="btn-solve-triangle" data-key="solveTriangleBtn"></button>
+                 <div class="result-container" id="triangle-result-container">
+                    <div class="result" id="triangle-output"></div>
+                    <div class="result-actions">
+                        <button class="action-button" data-method-toggle="triangle-method" data-key="showMethodBtn"></button>
+                        <button class="action-button" data-copy-target="triangle-output" data-key="copyBtn"></button>
+                        <button class="action-button" data-download-target="triangle-output" data-download-filename="triangle_solution.txt" data-key="downloadBtn"></button>
+                    </div>
+                    <div class="method-panel" id="triangle-method"></div>
+                </div>
+            </div>
+            
+            <div class="tab-pane" id="tab-grapher">
+                 <p data-key="grapherDesc"></p>
+                 <div class="form-group">
+                    <input type="text" id="func-input" placeholder="sin(x), 1 - cos(x)^2">
+                 </div>
+                 <div class="grapher-controls">
+                    <button class="button-base main-button" id="btn-plot" style="margin-top:0; flex:2;" data-key="plotBtn"></button>
+                    <button class="button-base secondary-button" id="btn-clear-graph" data-key="clearBtn"></button>
+                    <button class="button-base tertiary-button" id="btn-explain-graph" data-key="explainGraphBtn"></button>
+                    <button class="button-base tertiary-button" id="btn-download-graph" data-key="downloadGraphBtn"></button>
+                 </div>
+                 <div class="canvas-container"><canvas id="graphCanvas"></canvas></div>
+                 <div class="result-container" id="graph-explanation-container">
+                    <div class="result" id="graph-explanation-output"></div>
+                 </div>
+            </div>
+
+            <div class="tab-pane" id="tab-wave">
+                <div class="wave-simulator-layout">
+                    <div class="wave-controls-column">
+                        <p data-key="waveDesc" style="margin-bottom: 0;"></p>
+                        <div class="control-card wave-main-controls">
+                            <div class="toggle-group">
+                                <label for="sum-waves-toggle" data-key="waveSumToggle"></label>
+                                <input type="checkbox" id="sum-waves-toggle">
+                            </div>
+                            <button class="tertiary-button" id="wave-reset-btn" data-key="waveResetBtn" style="flex-grow:0; padding:8px 15px;"></button>
+                        </div>
+                        <div class="wave-control-panel" id="wave-1-controls">
+                             <h3 data-key="wave1Title"></h3>
+                             <div class="form-group"><label data-key="waveFuncLabel"></label><select id="wave-type-1"><option value="sin">sin(x)</option><option value="cos">cos(x)</option><option value="tan">tan(x)</option><option value="csc">csc(x)</option><option value="sec">sec(x)</option><option value="cot">cot(x)</option></select></div>
+                             <div class="form-group"><label><span data-key="waveAmpLabel"></span> <span id="amp-value-1">1.0</span></label><input type="range" id="slider-amp-1" min="-5" max="5" value="1" step="0.1"></div>
+                             <div class="form-group"><label><span data-key="waveFreqLabel"></span> <span id="freq-value-1">1.0</span></label><input type="range" id="slider-freq-1" min="-5" max="5" value="1" step="0.1"></div>
+                             <div class="form-group"><label><span data-key="wavePhaseLabel"></span> <span id="phase-value-1">0.0</span></label><input type="range" id="slider-phase-1" min="-6.28" max="6.28" value="0" step="0.01"></div>
+                             <div class="form-group"><label><span data-key="waveVertLabel"></span> <span id="vert-value-1">0.0</span></label><input type="range" id="slider-vert-1" min="-5" max="5" value="0" step="0.1"></div>
+                        </div>
+                        <div id="wave-2-controls-container">
+                            <div class="wave-control-panel" id="wave-2-controls">
+                                <h3 data-key="wave2Title"></h3>
+                                <div class="form-group"><label data-key="waveFuncLabel"></label><select id="wave-type-2"><option value="sin">sin(x)</option><option value="cos">cos(x)</option><option value="tan">tan(x)</option><option value="csc">csc(x)</option><option value="sec">sec(x)</option><option value="cot">cot(x)</option></select></div>
+                                <div class="form-group"><label><span data-key="waveAmpLabel"></span> <span id="amp-value-2">1.0</span></label><input type="range" id="slider-amp-2" min="-5" max="5" value="1" step="0.1"></div>
+                                <div class="form-group"><label><span data-key="waveFreqLabel"></span> <span id="freq-value-2">1.0</span></label><input type="range" id="slider-freq-2" min="-5" max="5" value="1" step="0.1"></div>
+                                <div class="form-group"><label><span data-key="wavePhaseLabel"></span> <span id="phase-value-2">0.0</span></label><input type="range" id="slider-phase-2" min="-6.28" max="6.28" value="0" step="0.01"></div>
+                                <div class="form-group"><label><span data-key="waveVertLabel"></span> <span id="vert-value-2">0.0</span></label><input type="range" id="slider-vert-2" min="-5" max="5" value="0" step="0.1"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wave-graph-column">
+                        <div class="dynamic-formula" id="wave-formula"></div>
+                        <div class="canvas-container"><canvas id="waveCanvas"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane" id="tab-verifier">
+                <p data-key="verifierDesc"></p>
+                <div class="control-card">
+                    <div class="form-group"><label data-key="lhsLabel"></label><input type="text" id="lhs-input" placeholder="sin(2*x) or tan(A)^2 + 1"></div>
+                    <div class="form-group"><label data-key="rhsLabel"></label><input type="text" id="rhs-input" placeholder="2*sin(x)*cos(x) or sec(A)^2"></div>
+                </div>
+                <button class="button-base main-button" id="btn-verify" data-key="verifyBtn"></button>
+                <div class="result-container" id="verifier-result-container">
+                    <div class="result" id="identity-output"></div>
+                    <div class="result-actions">
+                        <button class="action-button" data-method-toggle="transformation-panel" data-key="showTransformationBtn"></button>
+                        <button class="action-button" data-copy-target="identity-output" data-key="copyBtn"></button>
+                    </div>
+                    <div class="method-panel" id="transformation-panel"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="app-footer">Developed by Sadeepa Lakshan
+        <p class="text-xs text-gray-300 drop-shadow-sm">
+    © <span id="year"></span> All Rights Reserved
+  </p>
+  
+<!-- Font Awesome (for icons) -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+<script>
+  // Auto update year
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+<script>
+// --- 3D Loader Class ---
+class ThreeDLoader {
+    constructor(canvas) { this.canvas = canvas; this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true, antialias: true }); this.particles = []; this.config = { PARTICLE_COUNT: window.innerWidth < 768 ? 150 : 300, ROTATION_SPEED: 0.005, PARTICLE_SPEED: 0.05, PARTICLE_RADIUS: 0.08, }; this.init(); }
+    init() { this.renderer.setSize(window.innerWidth, window.innerHeight); this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); const geometry = new THREE.TorusKnotGeometry(10, 3, 128, 16); const material = new THREE.MeshStandardMaterial({ roughness: 0.4, metalness: 0.6, wireframe: true }); this.torusKnot = new THREE.Mesh(geometry, material); this.scene.add(this.torusKnot); this.pointLight = new THREE.PointLight(0xffffff, 1, 100); this.pointLight.position.set(20, 20, 20); this.scene.add(this.pointLight); this.scene.add(new THREE.AmbientLight(0xffffff, 0.2)); const particleGeometry = new THREE.SphereGeometry(this.config.PARTICLE_RADIUS, 8, 8); const particleMaterial = new THREE.MeshBasicMaterial(); for (let i = 0; i < this.config.PARTICLE_COUNT; i++) { const particle = new THREE.Mesh(particleGeometry.clone(), particleMaterial.clone()); particle.position.set((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60); particle.velocity = new THREE.Vector3((Math.random() - 0.5) * this.config.PARTICLE_SPEED, (Math.random() - 0.5) * this.config.PARTICLE_SPEED, (Math.random() - 0.5) * this.config.PARTICLE_SPEED); this.scene.add(particle); this.particles.push(particle); } this.camera.position.z = 35; this.setTheme(document.body.classList.contains('light-mode')); window.addEventListener('resize', () => this.onResize()); }
+    setTheme(isLight = false) { 
+        const lightColors = {knot: 0x006ee6, light: 0xf57c00, particles: 0xf57c00 };
+        const darkColors = {knot: 0x00d9ff, light: 0x7aff8a, particles: 0x7aff8a};
+        const colors = isLight ? lightColors : darkColors;
+        this.torusKnot.material.color.set(colors.knot); 
+        this.pointLight.color.set(colors.light); 
+        this.particles.forEach(p => p.material.color.set(colors.particles));
+    }
+    onResize() { this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix(); this.renderer.setSize(window.innerWidth, window.innerHeight); }
+    animate() { this.torusKnot.rotation.x += this.config.ROTATION_SPEED; this.torusKnot.rotation.y += this.config.ROTATION_SPEED; this.particles.forEach(p => { p.position.add(p.velocity); if (p.position.length() > 40) { p.position.set((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60); } }); this.renderer.render(this.scene, this.camera); }
+    start() { if (this.animationFrameId) this.stop(); const loop = () => { this.animationFrameId = requestAnimationFrame(loop); this.animate(); }; loop(); }
+    stop() { if (this.animationFrameId) { cancelAnimationFrame(this.animationFrameId); this.animationFrameId = null; } }
+}
+
+// --- App Encapsulation (Module Pattern) ---
+const TrigApp = {
+    // --- Config ---
+    D2R_FACTOR: Math.PI / 180, R2D_FACTOR: 180 / Math.PI, FLOAT_PRECISION: 4, GRAPH_POINTS: 501,
+    GRAPH_X_MIN: -10, GRAPH_X_MAX: 10, VERIFY_CHECKS: 100,
+    
+    // --- State & Cached Elements ---
+    chart: null, waveChart: null, elements: {}, loader: null,
+    
+    // --- Translations ---
+    translations: {
+        en: {
+            mainTitle: "Trigonometric PRO", tabCalculator: "Calculator", tabTriangle: "Triangle Solver", tabGrapher: "Graphing", tabWave: "Wave Simulator", tabVerifier: "Identity Verifier",
+            calcDesc: "Enter any expression (e.g., sin(30 deg)) or equation (e.g., cos(x) = 0.5).", solveBtn: "Calculate / Solve",
+            triangleDesc: "Enter any 3 values to solve the triangle. Angles are in Degrees.", solveTriangleBtn: "Solve Triangle", sideA: "Side a:", sideB: "Side b:", sideC: "Side c:", angleA: "Angle A (°):", angleB: "Angle B (°):", angleC: "Angle C (°):",
+            grapherDesc: "Plot multiple functions, separated by commas. Zoom and pan with mouse/touch.", plotBtn: "Plot", clearBtn: "Clear", downloadGraphBtn: "Download", explainGraphBtn: "Explain",
+            verifierDesc: "Verify identities. Use A, B, C for angles and x, y for variables.", lhsLabel: "LHS (Left Hand Side):", rhsLabel: "RHS (Right Hand Side):", verifyBtn: "Verify",
+            waveDesc: "Explore waves interactively. Toggle 'Sum of Waves' to see how two waves interfere.", waveFuncLabel: "Function", waveAmpLabel: "Amplitude (A)", waveFreqLabel: "Frequency (B)", wavePhaseLabel: "Phase Shift (C)", waveVertLabel: "Vertical Shift (D)",
+            waveSumToggle: "Sum of Waves", waveResetBtn: "Reset", wave1Title: "Wave 1", wave2Title: "Wave 2",
+            showMethodBtn: "Show Method", downloadBtn: "Download", copyBtn: "Copy", showTransformationBtn: "Show Transformation",
+            verifying: "Verifying...", copied: "Copied!", loading: "Calculating...",
+            graphAnalysisFor: "Analysis for", funcType: "Function Type", amplitude: "Amplitude", period: "Period",
+            phaseShift: "Phase Shift (Horizontal)", verticalShift: "Vertical Shift", domain: "Domain", range: "Range",
+            asymptotes: "Vertical Asymptotes", noGraph: "Please plot a function first to get an explanation.",
+            analysisFailed: "Could not analyze this function. It might be too complex or not in a standard trigonometric form.",
+            loaderTitle: "Initializing Engine...", loaderStatus1: "Calibrating modules...", loaderStatus2: "Compiling shaders...", loaderStatus3: "Plotting trajectories...", loaderStatus4: "Finalizing...", loaderComplete: "Complete!",
+        },
+        si: {
+            mainTitle: "ත්‍රිකෝණමිතික PRO", tabCalculator: "ගණකය", tabTriangle: "ත්‍රිකෝණ විසඳනය", tabGrapher: "ප්‍රස්තාර", tabWave: "තරංග නිරූපකය", tabVerifier: "සර්වසාම්‍ය සත්‍යාපකය",
+            calcDesc: "ඕනෑම ප්‍රකාශනයක් හෝ සමීකරණයක් විසඳීමට ඇතුලත් කරන්න.", solveBtn: "ගණනය කරන්න / විසඳන්න",
+            triangleDesc: "ත්‍රිකණය විසඳීමට ඕනෑම අගයන් 3ක් ඇතුලත් කරන්න. කෝණ අංශක වලින් දෙන්න.", solveTriangleBtn: "ත්‍රිකෝණය විසඳන්න", sideA: "පාදය a:", sideB: "පාදය b:", sideC: "පාදය c:", angleA: "කෝණය A (°):", angleB: "කෝණය B (°):", angleC: "කෝණය C (°):",
+            grapherDesc: "කොමාවකින් වෙන් කර ශ්‍රිත කිහිපයක් අඳින්න.", plotBtn: "අඳින්න", clearBtn: "මකන්න", downloadGraphBtn: "බාගන්න", explainGraphBtn: "විස්තර කරන්න",
+            verifierDesc: "සර්වසාම්‍ය සත්‍ය දැයි පරීක්ෂා කරන්න. කෝණ සඳහා A, B, C සහ විචල්‍ය සඳහා x, y භාවිතා කරන්න.", lhsLabel: "වම් පස (LHS):", rhsLabel: "දකුණු පස (RHS):", verifyBtn: "සත්‍යාපනය කරන්න",
+            waveDesc: "තරංග අන්තර්ක්‍රියාකාරීව ගවේෂණය කරන්න. තරංග දෙකක් එකිනෙක මත ක්‍රියා කරන ආකාරය බැලීමට 'තරංග එකතුව' ක්‍රියාත්මක කරන්න.",
+            waveFuncLabel: "ශ්‍රිතය", waveAmpLabel: "විස්තාරය (A)", waveFreqLabel: "සංඛ්‍යාතය (B)", wavePhaseLabel: "කලා වෙනස (C)", waveVertLabel: "සිරස් විස්ථාපනය (D)",
+            waveSumToggle: "තරංග එකතුව", waveResetBtn: "පෙරනිමිය", wave1Title: "තරංග 1", wave2Title: "තරංග 2",
+            showMethodBtn: "භාවිතා කල ක්‍රමය", downloadBtn: "බාගන්න", copyBtn: "පිටපත් කරන්න", showTransformationBtn: "පරිවර්තනය",
+            verifying: "සත්‍යාපනය කරමින්...", copied: "පිටපත් කරන ලදී!", loading: "ගණනය කරමින්...",
+            graphAnalysisFor: "සඳහා විශ්ලේෂණය", funcType: "ශ්‍රිත වර්ගය", amplitude: "විස්තාරය", period: "ආවර්තය",
+            phaseShift: "කලා විස්ථාපනය (තිරස්)", verticalShift: "සිරස් විස්ථාපනය", domain: "තාත්වික වසම", range: "පරාසය",
+            asymptotes: "සිරස් ස්පර්ශෝන්මුඛ", noGraph: "විස්තරයක් ලබා ගැනීමට කරුණාකර පළමුව ශ්‍රිතයක් අඳින්න.",
+            analysisFailed: "මෙම ශ්‍රිතය විශ්ලේෂණය කළ නොහැක. එය ඉතා සංකීර්ණ හෝ සම්මත ත්‍රිකෝණමිතික ආකාරයෙන් නොතිබිය හැක.",
+            loaderTitle: "පද්ධතිය ආරම්භ වෙමින්...", loaderStatus1: "මොඩියුල සකසමින්...", loaderStatus2: "ශේඩර් සම්පාදනය කරමින්...", loaderStatus3: "පථ ගොඩනගමින්...", loaderStatus4: "අවසන් කරමින්...", loaderComplete: "සම්පූර්ණයි!",
+        }
+    },
+
+    init() {
+        this.cacheDOMElements();
+        this.loader = new ThreeDLoader(this.elements.loaderCanvas);
+        this.loader.start();
+        this.bindEvents();
+        this.applyTheme(localStorage.getItem('theme') || 'dark');
+        this.setLanguage(localStorage.getItem('language') || 'si');
+        this.switchTab('calculator', true); 
+        this.updateTriangleVisualizer();
+        this.resetWaveControls(false); 
+        this.updateWaveSimulator();
+    },
+
+    cacheDOMElements() {
+        this.elements = {
+            body: document.body, loadingOverlay: document.getElementById('loading-overlay'), loaderCanvas: document.getElementById('loader-canvas'), loaderText: document.querySelector('.loader-text'), progressBar: document.getElementById('progress-bar'), statusText: document.getElementById('status-text'),
+            appContainer: document.querySelector('.app-container'), langToggle: document.getElementById('lang-toggle'), themeToggle: document.getElementById('theme-toggle'), tabNav: document.querySelector('.tab-nav'), allTabPanes: document.querySelectorAll('.tab-pane'), allTabButtons: document.querySelectorAll('.tab-nav button'),
+            masterInput: document.getElementById('master-input'), btnSolveMaster: document.getElementById('btn-solve-master'), masterResultContainer: document.getElementById('master-result-container'), masterOutput: document.getElementById('master-output'), masterMethod: document.getElementById('master-method'), 
+            btnSolveTriangle: document.getElementById('btn-solve-triangle'), sideA: document.getElementById('side_a'), sideB: document.getElementById('side_b'), sideC: document.getElementById('side_c'), angleA: document.getElementById('angle_A'), angleB: document.getElementById('angle_B'), angleC: document.getElementById('angle_C'), triangleResultContainer: document.getElementById('triangle-result-container'), triangleOutput: document.getElementById('triangle-output'), triangleMethod: document.getElementById('triangle-method'), triangleSVG: document.getElementById('triangle-svg'),
+            funcInput: document.getElementById('func-input'), btnPlot: document.getElementById('btn-plot'), btnClearGraph: document.getElementById('btn-clear-graph'), btnDownloadGraph: document.getElementById('btn-download-graph'), btnExplainGraph: document.getElementById('btn-explain-graph'), graphCanvas: document.getElementById('graphCanvas'), graphExplanationContainer: document.getElementById('graph-explanation-container'), graphExplanationOutput: document.getElementById('graph-explanation-output'),
+            lhsInput: document.getElementById('lhs-input'), rhsInput: document.getElementById('rhs-input'), btnVerify: document.getElementById('btn-verify'), verifierResultContainer: document.getElementById('verifier-result-container'), identityOutput: document.getElementById('identity-output'), transformationPanel: document.getElementById('transformation-panel'),
+            waveCanvas: document.getElementById('waveCanvas'), sumWavesToggle: document.getElementById('sum-waves-toggle'), waveResetBtn: document.getElementById('wave-reset-btn'), waveFormula: document.getElementById('wave-formula'), wave2ControlsContainer: document.getElementById('wave-2-controls-container'),
+        };
+        for (let i = 1; i <= 2; i++) {
+            this.elements[`waveType${i}`] = document.getElementById(`wave-type-${i}`); this.elements[`sliderAmp${i}`] = document.getElementById(`slider-amp-${i}`); this.elements[`sliderFreq${i}`] = document.getElementById(`slider-freq-${i}`); this.elements[`sliderPhase${i}`] = document.getElementById(`slider-phase-${i}`); this.elements[`sliderVert${i}`] = document.getElementById(`slider-vert-${i}`);
+            this.elements[`ampValue${i}`] = document.getElementById(`amp-value-${i}`); this.elements[`freqValue${i}`] = document.getElementById(`freq-value-${i}`); this.elements[`phaseValue${i}`] = document.getElementById(`phase-value-${i}`); this.elements[`vertValue${i}`] = document.getElementById(`vert-value-${i}`);
+        }
+    },
+
+    bindEvents() {
+        this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
+        this.elements.langToggle.addEventListener('change', (e) => this.setLanguage(e.target.value));
+        this.elements.tabNav.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON' && e.target.dataset.tab) { this.switchTab(e.target.dataset.tab); } });
+        this.elements.appContainer.addEventListener('click', (e) => { const target = e.target.closest('button'); if (!target) return; if (target.dataset.methodToggle) this.toggleMethod(target.dataset.methodToggle); if (target.dataset.downloadTarget) this.downloadResult(target.dataset.downloadTarget, target.dataset.downloadFilename); if (target.dataset.copyTarget) this.copyResult(target.dataset.copyTarget, target); });
+        this.elements.btnSolveMaster.addEventListener('click', () => this.solveMaster());
+        this.elements.btnSolveTriangle.addEventListener('click', () => this.solveTriangle());
+        this.elements.btnPlot.addEventListener('click', () => this.plotGraph());
+        this.elements.btnClearGraph.addEventListener('click', () => this.clearGraph());
+        this.elements.btnDownloadGraph.addEventListener('click', () => this.downloadGraph());
+        this.elements.btnExplainGraph.addEventListener('click', () => this.explainGraph());
+        this.elements.btnVerify.addEventListener('click', () => this.verifyIdentity());
+        const triInputs = [this.elements.sideA, this.elements.sideB, this.elements.sideC, this.elements.angleA, this.elements.angleB, this.elements.angleC];
+        triInputs.forEach(input => input.addEventListener('input', () => this.updateTriangleVisualizer(true)));
+        this.elements.sumWavesToggle.addEventListener('change', () => this.updateWaveSimulator());
+        this.elements.waveResetBtn.addEventListener('click', () => this.resetWaveControls(true));
+        for (let i = 1; i <= 2; i++) { const controls = [this.elements[`sliderAmp${i}`], this.elements[`sliderFreq${i}`], this.elements[`sliderPhase${i}`], this.elements[`sliderVert${i}`], this.elements[`waveType${i}`]]; controls.forEach(control => control.addEventListener('input', () => this.updateWaveSimulator())); }
+    },
+    
+    // --- UI, Theming & Loader ---
+    showLoader() { this.elements.loadingOverlay.classList.remove('hidden'); if(this.loader) this.loader.start(); },
+    hideLoader() { this.elements.loadingOverlay.classList.add('hidden'); if(this.loader) this.loader.stop(); },
+    toggleTheme() { 
+        const newTheme = this.elements.body.classList.contains('light-mode') ? 'dark' : 'light'; 
+        this.applyTheme(newTheme); 
+        // Animate the icon
+        const iconWrapper = document.querySelector('.theme-icon-wrapper');
+        const sunIcon = document.querySelector('.theme-icon.sun');
+        const moonIcon = document.querySelector('.theme-icon.moon');
+        if (newTheme === 'light') {
+            iconWrapper.style.transform = 'rotate(0deg)';
+            moonIcon.style.opacity = '1';
+            moonIcon.style.transform = 'scale(1)';
+            sunIcon.style.transform = 'scale(0.6)';
+            sunIcon.style.opacity = '0';
+        } else {
+            iconWrapper.style.transform = 'rotate(40deg)';
+            moonIcon.style.opacity = '0';
+            moonIcon.style.transform = 'scale(0.6)';
+            sunIcon.style.transform = 'scale(1)';
+            sunIcon.style.opacity = '1';
+        }
+    },
+    applyTheme(theme) {
+        const isLight = theme === 'light';
+        document.body.classList.toggle('light-mode', isLight);
+        localStorage.setItem('theme', theme);
+        if (this.loader) this.loader.setTheme(isLight);
+        if (this.chart) this.plotGraph(false);
+        this.updateTriangleVisualizer(false, this.lastSolvedTriangle);
+        if (this.waveChart) this.updateWaveSimulator();
+    },
+    switchTab(tabId, isInitialLoad = false) { 
+        // Small delay for tab switch transition feedback
+        if (!isInitialLoad) { 
+            this.elements.appContainer.style.opacity = '0';
+            this.elements.appContainer.style.transition = 'opacity 0.2s ease-out';
+        }
+        setTimeout(() => {
+            this.elements.allTabPanes.forEach(p => p.classList.remove('active'));
+            this.elements.allTabButtons.forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+            // Re-render chart on tab switch to fix potential sizing issues
+            if (tabId === 'grapher' && this.chart) {
+                setTimeout(() => this.chart.resize(), 100);
+            }
+            if (tabId === 'wave' && this.waveChart) {
+                setTimeout(() => this.waveChart.resize(), 100);
+            }
+            if (!isInitialLoad) { 
+                setTimeout(() => {
+                    this.elements.appContainer.style.opacity = '1';
+                    this.elements.appContainer.style.transition = 'opacity 0.5s ease-in';
+                }, 50);
+            }
+        }, isInitialLoad ? 0 : 200);
+    },
+    setLanguage(lang) { 
+        document.documentElement.lang = lang; this.elements.langToggle.value = lang; 
+        localStorage.setItem('language', lang);
+        document.querySelectorAll('[data-key]').forEach(elem => { const key = elem.dataset.key; if (this.translations[lang]?.[key]) elem.innerText = this.translations[lang][key]; }); 
+        [this.elements.masterResultContainer, this.elements.triangleResultContainer, this.elements.verifierResultContainer, this.elements.graphExplanationContainer].forEach(el => el.style.display = 'none'); 
+    },
+    
+    // --- Calculation & Logic Methods ---
+    _D2R: d => d * TrigApp.D2R_FACTOR, _R2D: r => r * TrigApp.R2D_FACTOR, _F: (num, p = TrigApp.FLOAT_PRECISION) => parseFloat(num.toFixed(p)),
+    normalizeExpression(str) { let s = str.trim().toLowerCase(); s = s.replace(/²/g, '^2').replace(/³/g, '^3'); s = s.replace(/(sin|cos|tan|cot|sec|csc)\^(\d+)\s*\((.*?)\)/g, '($1($3))^$2'); s = s.replace(/(\d)([a-zA-Z(])/g, '$1*$2'); s = s.replace(/(\))([a-zA-Z\d(])/g, '$1*$2'); return s; },
+    setSuccess(el, text) { el.style.borderLeftColor = `var(--primary-color-${this.elements.body.classList.contains('light-mode') ? 'light' : 'dark'})`; el.innerText = text; },
+    setError(el, text, errorObj = null) { el.style.borderLeftColor = `var(--error-color-${this.elements.body.classList.contains('light-mode') ? 'light' : 'dark'})`; el.innerText = text; if(errorObj) console.error(errorObj);},
+    solveMaster() { const input = this.elements.masterInput.value; this.elements.masterResultContainer.style.display = 'block'; this.elements.masterMethod.classList.remove('show'); try { if (input.includes("=") && (input.match(/[a-zA-Z]/) && !input.match(/deg|pi/i))) { this.solveEquation(input, this.elements.masterOutput, this.elements.masterMethod); } else { const normalized = this.normalizeExpression(input); const result = math.evaluate(normalized); this.setSuccess(this.elements.masterOutput, `Result = ${math.format(result, {precision: 10})}`); this.elements.masterMethod.innerHTML = `<h4>Method:</h4>Direct evaluation.<br>Normalized: <code>${normalized}</code>`; } } catch (e) { this.setError(this.elements.masterOutput, e.message, e); } },
+    solveEquation(eq_str, out, methodOut) { const match = eq_str.replace(/\s/g, '').match(/(sin|cos|tan)\((.*?)\)\s*=\s*(.*)/); if (!match) throw new Error("Format: sin(x) = value, etc."); const [, func, arg, valueStr] = match; const value = math.evaluate(valueStr); let pv_rad = 0; let gen_sol = ""; const isSinhala = document.documentElement.lang === 'si'; let resultText = (isSinhala ? 'සමීකරණය: ' : 'Equation: ') + `${func}(${arg}) = ${this._F(value)}\n\n`; const principalText = isSinhala ? 'ප්‍රධාන අගය (α) = ' : 'Principal Value (α) = '; const generalText = isSinhala ? '\nසාධාරණ විසඳුම (n ∈ ℤ):\n' : '\nGeneral Solution (n ∈ ℤ):\n'; let methodText = `<h4>Method Used:</h4><ol>`; switch(func) { case "sin": if (Math.abs(value) > 1) throw new Error("Sine value must be between -1 and 1."); pv_rad = Math.asin(value); gen_sol = `${arg} = nπ + (-1)ⁿ * (${this._F(pv_rad, 5)})`; methodText += `<li>Calculated principal value: α = asin(${this._F(value)}) = ${this._F(pv_rad,5)} rad.</li><li>Applied sine solution: x = nπ + (-1)ⁿα.</li>`; break; case "cos": if (Math.abs(value) > 1) throw new Error("Cosine value must be between -1 and 1."); pv_rad = Math.acos(value); gen_sol = `${arg} = 2nπ ± (${this._F(pv_rad, 5)})`; methodText += `<li>Calculated principal value: α = acos(${this._F(value)}) = ${this._F(pv_rad,5)} rad.</li><li>Applied cosine solution: x = 2nπ ± α.</li>`; break; case "tan": pv_rad = Math.atan(value); gen_sol = `${arg} = nπ + (${this._F(pv_rad, 5)})`; methodText += `<li>Calculated principal value: α = atan(${this._F(value)}) = ${this._F(pv_rad,5)} rad.</li><li>Applied tangent solution: x = nπ + α.</li>`; break; } resultText += principalText + `${this._F(this._R2D(pv_rad))}°\n`; resultText += generalText + gen_sol; methodText += `</ol>`; this.setSuccess(out, resultText); methodOut.innerHTML = methodText; },
+    solveTriangle() { const inputs = { a: parseFloat(this.elements.sideA.value), b: parseFloat(this.elements.sideB.value), c: parseFloat(this.elements.sideC.value), A: parseFloat(this.elements.angleA.value), B: parseFloat(this.elements.angleB.value), C: parseFloat(this.elements.angleC.value) }; const out = this.elements.triangleOutput; const container = this.elements.triangleResultContainer; const methodOut = this.elements.triangleMethod; container.style.display = 'block'; methodOut.classList.remove('show'); const isSinhala = document.documentElement.lang === 'si'; try { if (!isNaN(inputs.A)) inputs.A = this._D2R(inputs.A); if (!isNaN(inputs.B)) inputs.B = this._D2R(inputs.B); if (!isNaN(inputs.C)) inputs.C = this._D2R(inputs.C); const knownSides = Object.values(inputs).slice(0, 3).filter(v => !isNaN(v)).length; const knownAngles = Object.values(inputs).slice(3, 6).filter(v => !isNaN(v)).length; if (knownSides + knownAngles < 3) throw new Error(isSinhala ? "අවම වශයෙන් අගයන් 3ක් අවශ්‍යයි." : "At least 3 values are required."); let result, methodText; if (knownSides === 3) [result, methodText] = this._solveSSS(inputs.a, inputs.b, inputs.c); else if (knownSides === 2 && knownAngles === 1) { if ((!isNaN(inputs.a) && !isNaN(inputs.b) && !isNaN(inputs.C)) || (!isNaN(inputs.a) && !isNaN(inputs.c) && !isNaN(inputs.B)) || (!isNaN(inputs.b) && !isNaN(inputs.c) && !isNaN(inputs.A))) [result, methodText] = this._solveSAS(inputs); else throw new Error("The SSA case (two sides, one non-included angle) is ambiguous and not yet supported."); } else if (knownSides === 1 && knownAngles >= 2) [result, methodText] = this._solveAAS(inputs); else throw new Error(isSinhala ? "වලංගු නොවන අගයන්." : "Invalid combination of inputs."); if (result.a <= 0 || result.b <= 0 || result.c <= 0 || result.A <= 0 || result.B <= 0 || result.C <= 0 || isNaN(result.a)) throw new Error(isSinhala ? "විසඳිය නොහැක. ඇතුලත් කල අගයන් පරීක්ෂා කරන්න." : "Cannot solve. Check input values."); this.lastSolvedTriangle = result; const perimeter = result.a + result.b + result.c; const s = perimeter / 2; const area = Math.sqrt(s * (s - result.a) * (s - result.b) * (s - result.c)); const resultText = `--- SOLVED TRIANGLE ---\n` + `Side a: ${this._F(result.a)}\nSide b: ${this._F(result.b)}\nSide c: ${this._F(result.c)}\n` + `Angle A: ${this._F(this._R2D(result.A))}°\nAngle B: ${this._F(this._R2D(result.B))}°\nAngle C: ${this._F(this._R2D(result.C))}°\n` + `-----------------------\n` + `Perimeter: ${this._F(perimeter)}\nArea: ${this._F(area)}`; this.setSuccess(out, resultText); methodOut.innerHTML = methodText; this.updateTriangleVisualizer(false, result); } catch (e) { this.setError(out, e.message, e); this.updateTriangleVisualizer(true); } },
+    _solveSSS(a, b, c) { if (a + b <= c || a + c <= b || b + c <= a) throw new Error("Invalid sides. Sum of two sides must be > third side."); const A = Math.acos((b*b + c*c - a*a) / (2*b*c)); const B = Math.acos((a*a + c*c - b*b) / (2*a*c)); const C = Math.PI - A - B; return [{a, b, c, A, B, C}, "<b>Case:</b> SSS<br><b>Method:</b> Used Law of Cosines."]; },
+    _solveSAS(i) { let {a, b, c, A, B, C} = i; if (!isNaN(C)) { c = Math.sqrt(a*a + b*b - 2*a*b*Math.cos(C)); A = Math.asin(a*Math.sin(C)/c); B = Math.PI - A - C; } else if (!isNaN(B)) { b = Math.sqrt(a*a + c*c - 2*a*c*Math.cos(B)); A = Math.asin(a*Math.sin(B)/b); C = Math.PI - A - B; } else { a = Math.sqrt(b*b + c*c - 2*b*c*Math.cos(A)); B = Math.asin(b*Math.sin(A)/a); C = Math.PI - B - A; } return [{a, b, c, A, B, C}, "<b>Case:</b> SAS<br><b>Method:</b> Law of Cosines, then Law of Sines."]; },
+    _solveAAS(i) { let {a, b, c, A, B, C} = i; if (isNaN(A)) A = Math.PI - B - C; else if (isNaN(B)) B = Math.PI - A - C; else C = Math.PI - A - B; if (A <= 0 || B <= 0 || C <= 0) throw new Error("Invalid angles. Sum of known angles is >= 180°."); if (!isNaN(a)) { b = a * Math.sin(B) / Math.sin(A); c = a * Math.sin(C) / Math.sin(A); } else if (!isNaN(b)) { a = b * Math.sin(A) / Math.sin(B); c = b * Math.sin(C) / Math.sin(B); } else { a = c * Math.sin(A) / Math.sin(C); b = c * Math.sin(B) / Math.sin(C); } return [{a, b, c, A, B, C}, "<b>Case:</b> ASA/AAS<br><b>Method:</b> Sum of angles, then Law of Sines."]; },
+    updateTriangleVisualizer(isInput = true, solvedData = null) { const svg = this.elements.triangleSVG; svg.innerHTML = ''; let a, b, c, A_deg, B_deg, C_deg, A_rad; const canDraw = !isInput && solvedData && solvedData.a; if (canDraw) { a = this._F(solvedData.a, 2); b = this._F(solvedData.b, 2); c = this._F(solvedData.c, 2); A_rad = solvedData.A; A_deg = this._F(this._R2D(solvedData.A), 1); B_deg = this._F(this._R2D(solvedData.B), 1); C_deg = this._F(this._R2D(solvedData.C), 1); } else { a = this.elements.sideA.value || '?'; b = this.elements.sideB.value || '?'; c = this.elements.sideC.value || '?'; A_deg = this.elements.angleA.value || '?'; B_deg = this.elements.angleB.value || '?'; C_deg = this.elements.angleC.value || '?'; } const viewBox = { w: 300, h: 250 }; let pA, pB, pC; if (canDraw) { const pC_calc = { x: 0, y: 0 }; const pA_calc = { x: solvedData.b, y: 0 }; const pB_calc = { x: solvedData.c * Math.cos(A_rad), y: solvedData.c * Math.sin(A_rad) }; const minX = Math.min(pA_calc.x, pB_calc.x, pC_calc.x); const maxX = Math.max(pA_calc.x, pB_calc.x, pC_calc.x); const minY = Math.min(pA_calc.y, pB_calc.y, pC_calc.y); const maxY = Math.max(pA_calc.y, pB_calc.y, pC_calc.y); const triWidth = maxX - minX; const triHeight = maxY - minY; const scale = Math.min(viewBox.w * 0.9 / (triWidth || 1), viewBox.h * 0.9 / (triHeight || 1)); const offsetX = (viewBox.w - triWidth * scale) / 2 - minX * scale; const offsetY = (viewBox.h - triHeight * scale) / 2 - minY * scale; pC = { x: pC_calc.x * scale + offsetX, y: viewBox.h - (pC_calc.y * scale + offsetY) }; pA = { x: pA_calc.x * scale + offsetX, y: viewBox.h - (pA_calc.y * scale + offsetY) }; pB = { x: pB_calc.x * scale + offsetX, y: viewBox.h - (pB_calc.y * scale + offsetY) }; } else { pA = { x: 150, y: 20 }; pB = { x: 20, y: 230 }; pC = { x: 280, y: 230 }; } const poly = document.createElementNS("http://www.w3.org/2000/svg", 'polygon'); poly.setAttribute('points', `${pB.x},${pB.y} ${pC.x},${pC.y} ${pA.x},${pA.y}`); poly.setAttribute('fill', 'rgba(0, 217, 255, 0.1)'); poly.setAttribute('stroke', 'var(--primary-color-dark)'); poly.setAttribute('stroke-width', '2'); svg.appendChild(poly); const createLabel = (x, y, text, className) => { const label = document.createElementNS("http://www.w3.org/2000/svg", 'text'); label.setAttribute('x', x); label.setAttribute('y', y); label.setAttribute('class', className); label.setAttribute('text-anchor', 'middle'); label.textContent = text; return label; }; svg.appendChild(createLabel((pA.x + pC.x) / 2, (pA.y + pC.y) / 2 + 15, `b=${b}`, 'side-label')); svg.appendChild(createLabel((pA.x + pB.x) / 2, (pA.y + pB.y) / 2 - 5, `c=${c}`, 'side-label')); svg.appendChild(createLabel((pB.x + pC.x) / 2, (pB.y + pC.y) / 2 + 15, `a=${a}`, 'side-label')); svg.appendChild(createLabel(pA.x, pA.y + (pA.y < pB.y ? -10 : 20), `A=${A_deg}°`, 'angle-label')); svg.appendChild(createLabel(pB.x + (pB.x < pA.x ? -15: 15), pB.y - 10, `B=${B_deg}°`, 'angle-label')); svg.appendChild(createLabel(pC.x + (pC.x < pA.x ? 15 : -15), pC.y - 10, `C=${C_deg}°`, 'angle-label')); },
+    plotGraph(fromInput = true) { const graphStep = (this.GRAPH_X_MAX - this.GRAPH_X_MIN) / (this.GRAPH_POINTS -1); this.elements.graphExplanationContainer.style.display = 'none'; if (!this.elements.funcInput.value && fromInput) return this.clearGraph(); const functions = this.elements.funcInput.value.split(',').map(f => f.trim()); const datasets = []; const colors_dark = ['#00d9ff', '#7aff8a', '#ff55a3', '#ffd900', '#9b59b6']; const colors_light = ['#006ee6', '#28a745', '#d81b60', '#f57c00', '#6f42c1']; const xValues = Array.from({length: this.GRAPH_POINTS}, (_, i) => this.GRAPH_X_MIN + i * graphStep); functions.forEach((func, index) => { if (!func) return; const normalizedFunc = this.normalizeExpression(func); const yValues = xValues.map(x => { try { const y = math.evaluate(normalizedFunc, {x}); return isFinite(y) ? y : null; } catch { return null; } }); datasets.push({ label: `y=${func}`, data: yValues, borderColor: this.elements.body.classList.contains('light-mode') ? colors_light[index % colors_light.length] : colors_dark[index % colors_dark.length], borderWidth: 2.5, fill: false, pointRadius: 0, tension: 0.1 }); }); const isLight = this.elements.body.classList.contains('light-mode'); const gridColor = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'; const textColor = isLight ? '#2c3e50' : '#cad3f5'; if (this.chart) this.chart.destroy(); this.chart = new Chart(this.elements.graphCanvas.getContext('2d'), { type: "line", data: { labels: xValues, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: {color: textColor}, grid: {color: gridColor, zeroLineColor: textColor} }, y: { ticks: {color: textColor}, grid: {color: gridColor, zeroLineColor: textColor} } }, plugins: { legend: { labels: { color: textColor, font: {size: 14} } }, zoom: { pan: { enabled: true, mode: 'xy', threshold: 10 /* Increase touch sensitivity */ }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', threshold: 10 /* Increase touch sensitivity */ } } } } }); },
+    clearGraph() { if (this.chart) { this.chart.destroy(); this.chart = null; } this.elements.funcInput.value = ''; this.elements.graphExplanationContainer.style.display = 'none';},
+    downloadGraph() { if (!this.chart || !this.chart.canvas) { alert("Please plot a graph first."); return; } const a = document.createElement('a'); a.href = this.chart.toBase64Image('image/png', 1); a.download = 'trig-pro-graph.png'; a.click(); },
+    explainGraph() { const lang = document.documentElement.lang; const t = this.translations[lang]; const funcs = this.elements.funcInput.value.split(',').map(f => f.trim()).filter(f => f); if (funcs.length === 0) { this.elements.graphExplanationOutput.innerHTML = `<p>${t.noGraph}</p>`; this.elements.graphExplanationContainer.style.display = 'block'; return; } let fullExplanation = ''; funcs.forEach(funcStr => { const analysis = this._analyzeTrigFunction(funcStr); fullExplanation += `<h4>${t.graphAnalysisFor} y = ${funcStr}</h4>`; if (analysis) { let period, periodCalc, range, domain, asymptotes = ''; const B_abs = Math.abs(analysis.B); const A_abs = Math.abs(analysis.A); if (['tan', 'cot'].includes(analysis.funcName)) { period = this._F(Math.PI / B_abs, 4); periodCalc = `π / |B| = π / ${this._F(B_abs, 2)}`; } else { period = this._F(2 * Math.PI / B_abs, 4); periodCalc = `2π / |B| = 2π / ${this._F(B_abs, 2)}`; } const phaseShiftVal = this._F(-analysis.C / analysis.B, 4); let phaseShiftText; if (phaseShiftVal === 0) { phaseShiftText = "0"; } else { const direction = phaseShiftVal > 0 ? (lang === 'si' ? 'දකුණට' : 'to the Right') : (lang === 'si' ? 'වමට' : 'to the Left'); phaseShiftText = `${Math.abs(phaseShiftVal)} ${direction}`; } switch(analysis.funcName) { case 'sin': case 'cos': range = `[${this._F(analysis.D - A_abs)}, ${this._F(analysis.D + A_abs)}]`; domain = '(-∞, ∞)'; break; case 'tan': domain = `x ≠ (π/2 + nπ) / B, n ∈ ℤ`; range = '(-∞, ∞)'; asymptotes = `x = (π/2 + nπ)/B - C/B`; break; case 'cot': domain = `x ≠ nπ / B, n ∈ ℤ`; range = '(-∞, ∞)'; asymptotes = `x = nπ/B - C/B`; break; case 'sec': range = `(-∞, ${this._F(analysis.D - A_abs)}] U [${this._F(analysis.D + A_abs)}, ∞)`; domain = `x ≠ (π/2 + nπ) / B, n ∈ ℤ`; asymptotes = `x = (π/2 + nπ)/B - C/B`; break; case 'csc': range = `(-∞, ${this._F(analysis.D - A_abs)}] U [${this._F(analysis.D + A_abs)}, ∞)`; domain = `x ≠ nπ / B, n ∈ ℤ`; asymptotes = `x = nπ/B - C/B`; break; } fullExplanation += '<ul>'; fullExplanation += `<li><strong>${t.funcType}:</strong> ${analysis.funcName}</li>`; if (!['tan', 'cot'].includes(analysis.funcName)) { fullExplanation += `<li><strong>${t.amplitude}:</strong> ${this._F(A_abs)}</li>`; } fullExplanation += `<li><strong>${t.period}:</strong> ${period} (calc: ${periodCalc})</li>`; fullExplanation += `<li><strong>${t.phaseShift}:</strong> ${phaseShiftText} (calc: -C/B)</li>`; fullExplanation += `<li><strong>${t.verticalShift}:</strong> ${this._F(analysis.D)}</li>`; fullExplanation += `<li><strong>${t.domain}:</strong> ${domain}</li>`; fullExplanation += `<li><strong>${t.range}:</strong> ${range}</li>`; if (asymptotes) { fullExplanation += `<li><strong>${t.asymptotes}:</strong> ${asymptotes.replace('B', this._F(analysis.B,2)).replace('C', this._F(analysis.C,2))}</li>`; } fullExplanation += '</ul><hr style="border-color: var(--border-color-dark); opacity: 0.5;">'; } else { fullExplanation += `<p style="font-family: var(--font-family);">${t.analysisFailed}</p><hr style="border-color: var(--border-color-dark); opacity: 0.5;">`; } }); this.elements.graphExplanationOutput.innerHTML = fullExplanation.slice(0, -66); this.elements.graphExplanationContainer.style.display = 'block'; },
+    _analyzeTrigFunction(funcStr) { const defaults = { A: 1, B: 1, C: 0, D: 0, funcName: null }; let rootNode; try { rootNode = math.parse(this.normalizeExpression(funcStr)); } catch(e) { return null; } let funcNode = null; rootNode.traverse(function (node) { if (node.isFunctionNode && ['sin','cos','tan','cot','sec','csc'].includes(node.name)) { if (funcNode === null) funcNode = node; else funcNode = 'COMPLEX'; } }); if (funcNode === null || funcNode === 'COMPLEX') return null; defaults.funcName = funcNode.name; let innerNode = funcNode.args[0]; if(innerNode.isOperatorNode && (innerNode.op === '+' || innerNode.op === '-')) { const constArgIndex = innerNode.args.findIndex(arg => !arg.toString().includes('x')); if (constArgIndex !== -1) { try { defaults.C = math.evaluate(innerNode.args[constArgIndex].toString()); if (innerNode.op === '-' && constArgIndex === 1) defaults.C *= -1; } catch (e) { /* ignore */ } innerNode = innerNode.args[1 - constArgIndex]; } } if (innerNode.isOperatorNode && innerNode.op === '*' && innerNode.args[0].isConstantNode) { defaults.B = parseFloat(innerNode.args[0].toString()); } else if (innerNode.isOperatorNode && innerNode.op === '*' && innerNode.args[1].isConstantNode) { defaults.B = parseFloat(innerNode.args[1].toString()); } else if (innerNode.isOperatorNode && innerNode.op === '/' && innerNode.args[0].isSymbolNode && innerNode.args[0].name === 'x') { defaults.B = 1 / parseFloat(innerNode.args[1].toString()); } else if (innerNode.isOperatorNode && innerNode.op === '-' && innerNode.fn === 'unaryMinus') { defaults.B = -1; } const funcNodeString = funcNode.toString().replace(/\*/g, '\\*'); const outerExpression = rootNode.toString().replace(new RegExp(funcNodeString, 'g'), 'z'); try { const outerNode = math.parse(outerExpression); defaults.D = outerNode.evaluate({ z: 0 }); defaults.A = math.derivative(outerNode, 'z').evaluate({ z: 0 }); } catch(e) { console.warn("Advanced analysis failed for outer function.", e); return null; } return defaults; },
+    verifyIdentity() { const lhs_str = this.elements.lhsInput.value; const rhs_str = this.elements.rhsInput.value; if (!lhs_str || !rhs_str) return this.setError(this.elements.identityOutput, "LHS and RHS are required."); this.showLoader(); this.elements.verifierResultContainer.style.display = 'block'; this.elements.transformationPanel.classList.remove('show'); const isSinhala = document.documentElement.lang === 'si'; setTimeout(() => { try { const normalized_lhs = this.normalizeExpression(lhs_str); const normalized_rhs = this.normalizeExpression(rhs_str); this.elements.transformationPanel.innerHTML = `<b>${isSinhala ? 'පරිවර්තනය' : 'Transformation'}:</b><br>` + `LHS: "${lhs_str}" &nbsp;➔&nbsp; "${normalized_lhs}"<br>` + `RHS: "${rhs_str}" &nbsp;➔&nbsp; "${normalized_rhs}"`; const lhs_node = math.parse(normalized_lhs); const rhs_node = math.parse(normalized_rhs); let isEquivalent = true; for (let i = 0; i < this.VERIFY_CHECKS; i++) { const scope = { x: Math.random() * 2 * Math.PI, y: Math.random() * 2 * Math.PI, A: Math.random() * Math.PI, B: Math.random() * Math.PI, C: Math.random() * Math.PI }; if (Math.abs(lhs_node.evaluate(scope) - rhs_node.evaluate(scope)) > 1e-9) { isEquivalent = false; break; } } if (!isEquivalent) this.setError(this.elements.identityOutput, isSinhala ? `🔴 සත්‍ය නොවේ (LIKELY FALSE)\n\nමෙම සර්වසාම්‍යය සසම්භාවී අගයන් සඳහා සත්‍ය නොවන බව පෙනේ.` : `🔴 LIKELY FALSE\n\nThe identity does not hold for random valid inputs.`); else this.setSuccess(this.elements.identityOutput, isSinhala ? `✅ සත්‍ය වේ (LIKELY TRUE)\n\nමෙම සර්වසාම්‍යය සසම්භාවී අගයන් ${this.VERIFY_CHECKS}ක් සඳහා පරීක්ෂා කර ඇත.` : `✅ LIKELY TRUE\n\nThe identity was verified for ${this.VERIFY_CHECKS} random inputs.`); } catch (e) { this.setError(this.elements.identityOutput, `Error: ${e.message}. Check syntax.`, e); } finally { this.hideLoader(); } }, 50); },
+    toggleMethod(id) { document.getElementById(id).classList.toggle('show'); },
+    downloadResult(elementId, filename) { const text = document.getElementById(elementId).innerText; const a = document.createElement('a'); a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text); a.download = filename; a.click(); },
+    copyResult(elementId, buttonEl) { const textToCopy = document.getElementById(elementId).innerText; navigator.clipboard.writeText(textToCopy).then(() => { const originalText = buttonEl.innerText; const lang = document.documentElement.lang; buttonEl.innerText = this.translations[lang].copied || "Copied!"; setTimeout(() => { buttonEl.innerText = originalText; }, 2000); }).catch(err => { console.error('Failed to copy: ', err); alert('Failed to copy text.'); }); },
+    
+    // --- Wave Simulator Methods ---
+    resetWaveControls(update = true) {
+        const defaults = { amp: 1, freq: 1, phase: 0, vert: 0, type: 'sin' };
+        for (let i = 1; i <= 2; i++) {
+            this.elements[`sliderAmp${i}`].value = defaults.amp;
+            this.elements[`sliderFreq${i}`].value = defaults.freq;
+            this.elements[`sliderPhase${i}`].value = defaults.phase;
+            this.elements[`sliderVert${i}`].value = defaults.vert;
+            this.elements[`waveType${i}`].value = defaults.type;
+        }
+        this.elements.sumWavesToggle.checked = false;
+        if (update) this.updateWaveSimulator();
+    },
+    _getWaveParams(index) { return { A: parseFloat(this.elements[`sliderAmp${index}`].value), B: parseFloat(this.elements[`sliderFreq${index}`].value), C: parseFloat(this.elements[`sliderPhase${index}`].value), D: parseFloat(this.elements[`sliderVert${index}`].value), func: this.elements[`waveType${index}`].value }; },
+    _generateWaveData(params) {
+        const { A, B, func, C, D } = params;
+        const xValues = Array.from({length: this.GRAPH_POINTS}, (_, i) => this.GRAPH_X_MIN + i * (this.GRAPH_X_MAX - this.GRAPH_X_MIN) / (this.GRAPH_POINTS - 1));
+        if (B === 0) {
+            const trigVal = { sin: Math.sin, cos: Math.cos, csc: v => 1/Math.sin(v), sec: v => 1/Math.cos(v), tan: Math.tan, cot: v => 1/Math.tan(v) };
+            const y_const = A * trigVal[func](C) + D;
+            return { x: xValues, y: Array(this.GRAPH_POINTS).fill(isFinite(y_const) ? y_const : null) };
+        }
+        const yValues = xValues.map(x => {
+            const angle = B * x + C;
+            try {
+                switch(func) {
+                    case 'sin': return A * Math.sin(angle) + D; case 'cos': return A * Math.cos(angle) + D; case 'tan': return A * Math.tan(angle) + D;
+                    case 'csc': return A / Math.sin(angle) + D; case 'sec': return A / Math.cos(angle) + D; case 'cot': return A / Math.tan(angle) + D;
+                    default: return null;
+                }
+            } catch { return null; }
+        });
+        const ASYMPTOTE_THRESHOLD = 30; // Increased threshold slightly for better visual on mobile
+        for (let i = 1; i < yValues.length; i++) { if (Math.abs(yValues[i] - yValues[i-1]) > ASYMPTOTE_THRESHOLD && Math.sign(yValues[i]) !== Math.sign(yValues[i-1])) { yValues[i] = null; } }
+        return { x: xValues, y: yValues };
+    },
+    _formatFormula(params, waveNum) {
+        const { A, B, func, C, D } = params;
+        const cSign = C < 0 ? "-" : "+"; const dSign = D < 0 ? "-" : "+";
+        return `<span class="p${waveNum}">${A.toFixed(1)} * ${func}(${B.toFixed(1)}x ${cSign} ${Math.abs(C).toFixed(2)}) ${dSign} ${Math.abs(D).toFixed(1)}</span>`;
+    },
+    updateWaveSimulator() {
+        const isSumMode = this.elements.sumWavesToggle.checked;
+        this.elements.wave2ControlsContainer.classList.toggle('visible', isSumMode);
+        const params1 = this._getWaveParams(1);
+        const data1 = this._generateWaveData(params1);
+        [this.elements.ampValue1, this.elements.freqValue1, this.elements.phaseValue1, this.elements.vertValue1].forEach((el, i) => el.textContent = [params1.A.toFixed(1), params1.B.toFixed(1), params1.C.toFixed(2), params1.D.toFixed(1)][i]);
+        const datasets = [];
+        const isLight = this.elements.body.classList.contains('light-mode');
+        const wave1Color = getComputedStyle(document.documentElement).getPropertyValue(isLight ? '--wave1-color-light' : '--wave1-color-dark');
+        datasets.push({ label: 'Wave 1', data: data1.y.map(y => isFinite(y) ? y : NaN), borderColor: wave1Color, borderWidth: isSumMode ? 2 : 3.5, pointRadius: 0, tension: 0.1, spanGaps: false });
+        if (isSumMode) {
+            const params2 = this._getWaveParams(2);
+            const data2 = this._generateWaveData(params2);
+            [this.elements.ampValue2, this.elements.freqValue2, this.elements.phaseValue2, this.elements.vertValue2].forEach((el, i) => el.textContent = [params2.A.toFixed(1), params2.B.toFixed(1), params2.C.toFixed(2), params2.D.toFixed(1)][i]);
+            const sumData = data1.y.map((y1, i) => (y1 === null || data2.y[i] === null) ? null : y1 + data2.y[i]);
+            const wave2Color = getComputedStyle(document.documentElement).getPropertyValue(isLight ? '--wave2-color-light' : '--wave2-color-dark');
+            const sumColor = getComputedStyle(document.documentElement).getPropertyValue(isLight ? '--waveSum-color-light' : '--waveSum-color-dark');
+            datasets.push({ label: 'Wave 2', data: data2.y.map(y => isFinite(y) ? y : NaN), borderColor: wave2Color, borderWidth: 2, borderDash: [5, 5], pointRadius: 0, tension: 0.1, spanGaps: false });
+            datasets.push({ label: 'Sum', data: sumData.map(y => isFinite(y) ? y : NaN), borderColor: sumColor, borderWidth: 3.5, pointRadius: 0, tension: 0.1, spanGaps: false });
+            this.elements.waveFormula.innerHTML = `y = (${this._formatFormula(params1, 1)}) + (${this._formatFormula(params2, 2)})`;
+        } else {
+            this.elements.waveFormula.innerHTML = `y = ${this._formatFormula(params1, 1)}`;
+        }
+        const gridColor = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)';
+        const textColor = isLight ? '#2c3e50' : '#cad3f5';
+        if (this.waveChart) {
+            this.waveChart.data.labels = data1.x;
+            this.waveChart.data.datasets = datasets;
+            this.waveChart.options.scales.x.ticks.color = textColor; this.waveChart.options.scales.x.grid.color = gridColor;
+            this.waveChart.options.scales.y.ticks.color = textColor; this.waveChart.options.scales.y.grid.color = gridColor;
+            this.waveChart.options.plugins.legend.display = isSumMode; this.waveChart.options.plugins.legend.labels.color = textColor;
+            this.waveChart.update('none');
+        } else {
+             this.waveChart = new Chart(this.elements.waveCanvas.getContext('2d'), { type: 'line', data: { labels: data1.x, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 }, scales: { x: { type: 'linear', ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor }, min: -8, max: 8 } }, plugins: { legend: { display: isSumMode, position: 'bottom', labels: { color: textColor, padding: 20, usePointStyle: true } } } } });
+        }
+    },
+};
+
+// ---  Loading Sequence on DOMContentLoaded ---
+window.addEventListener('DOMContentLoaded', () => {
+    TrigApp.init();
+    let progress = 0; let statusIndex = 0;
+    const updateProgress = () => {
+        const lang = document.documentElement.lang; const t = TrigApp.translations[lang];
+        const statusMessages = [t.loaderStatus1, t.loaderStatus2, t.loaderStatus3, t.loaderStatus4];
+        progress += Math.random() * 8 + 2;
+        if (progress >= 100) {
+            progress = 100;
+            TrigApp.elements.progressBar.style.width = `${progress}%`;
+            TrigApp.elements.statusText.textContent = t.loaderComplete;
+            setTimeout(() => { 
+                TrigApp.hideLoader();
+                document.body.classList.add('loaded'); 
+            }, 500);
+            clearInterval(progressInterval);
+        } else {
+            TrigApp.elements.progressBar.style.width = `${progress}%`;
+            if (progress > (statusIndex + 1) * 25) { statusIndex = Math.min(statusIndex + 1, statusMessages.length - 1); TrigApp.elements.statusText.textContent = statusMessages[statusIndex]; }
+        }
+    };
+    const initialLang = localStorage.getItem('language') || 'si';
+    TrigApp.elements.statusText.textContent = TrigApp.translations[initialLang].loaderStatus1;
+    const progressInterval = setInterval(updateProgress, 250);
+});
+</script>
+</body>
+</html>
